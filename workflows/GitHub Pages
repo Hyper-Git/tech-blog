@@ -1,31 +1,38 @@
-name: hugo
+name: Build and Deploy Hugo Blog
 
 on:
-    push:
-        branches: [ main ]
-    pull_request:
-        branches: [ main ]
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-                with:
-                    fetch-depth: 0  # needed to render properly
+  build:
+    runs-on: ubuntu-latest
 
-            - name: Setup Hugo
-                uses: peaceiris/actions-hugo@v2
-                with:
-                    hugo-version: 'latest'
-                    extended: true
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
 
-            - name: Build
-                run: hugo
+    - name: Setup Hugo
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: 'latest'  # use the latest or your preferred version
+        extended: true
 
-            - name: Deploy to GitHub Pages
-                uses: peaceiris/actions-gh-pages@v3
-                if: github.ref == 'refs/heads/main'
-                with:
-                    github_token: ${{ secrets.GITHUB_TOKEN }}
-                    publish_dir: ./public
+    - name: Build
+      run: hugo --minify
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        role-to-assume: arn:aws:iam::<YOUR_ACCOUNT_ID>:role/GitHubActionsRole
+        aws-region: us-east-1  # replace with your region
+
+    - name: Sync to S3
+      run: aws s3 sync public/ s3://<YOUR_BUCKET_NAME> --delete
+    - name: Invalidate CloudFront
+      run: aws cloudfront create-invalidation --distribution-id <YOUR_DISTRIBUTION_ID> --paths "/*"
