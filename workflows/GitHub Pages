@@ -1,0 +1,31 @@
+name: hugo
+
+on:
+    push:
+        branches: [ main ]
+    pull_request:
+        branches: [ main ]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+                with:
+                    fetch-depth: 0  # needed to render properly
+
+            - name: Setup Hugo
+                uses: peaceiris/actions-hugo@v2
+                with:
+                    hugo-version: 'latest'
+                    extended: true
+
+            - name: Build
+                run: hugo
+
+            - name: Deploy to GitHub Pages
+                uses: peaceiris/actions-gh-pages@v3
+                if: github.ref == 'refs/heads/main'
+                with:
+                    github_token: ${{ secrets.GITHUB_TOKEN }}
+                    publish_dir: ./public
