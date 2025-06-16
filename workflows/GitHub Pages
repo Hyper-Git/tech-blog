@@ -10,42 +10,34 @@ on:
 permissions:
   id-token: write   # This is required for requesting the JWT
   contents: read    # This is required for actions/checkout
-  pages: write      # This is required for deploying to GitHub Pages
-  s3: write         # This is required for deploying to S3
-jobs:  
+
+jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: true  # Fetch Hugo themes
+        fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
 
-      - name: Set up Hugo
-        uses: peaceiris/actions-hugo@v2
-        with:
-          hugo-version: 'latest'
-          extended: true  # Use extended version if you need SCSS/SASS support
+    - name: Setup Hugo
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: 'latest'
+        extended: true
 
-      - name: Build Hugo site
-        run: hugo --minify
+    - name: Build Hugo site
+      run: hugo --minify
 
-      - name:  Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: ${ { secrets.AWS_ROLE_ARN } }
-          aws-region: ${ { secrets.AWS_REGION } }
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::<YOUR_ACCOUNT_ID>:role/GitHubActionsRole # Replace with your IAM role ARN
+        aws-region: us-east-1  # replace with your region
 
-      - name: Deploy to S3
-        run: | 
-          aws s3 sync public/ s3://${{ secrets.S3_BUCKET_NAME }} --delete --cache-control "max-age=3600" --acl public-read
-
-      - name: Invalidate CloudFront cache
-        run: |
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*" 
-          if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
-
-      - name: Deployment summary
-        run: |
-          echo "Deployment to S3 completed successfully!"
-          echo "CloudFront cache invalidated."
-          echo "Visit your site at https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com"
+    - name: Sync to S3
+      run: aws s3 sync public/ s3://<YOUR_BUCKET_NAME> --delete # Replace with your S3 bucket name
+    - name: Invalidate CloudFront
+      run: aws cloudfront create-invalidation --distribution-id <YOUR_DISTRIBUTION_ID> --paths "/*" # Replace with your CloudFront distribution ID
