@@ -31,23 +31,13 @@ jobs:
     - name: Build Hugo site
       run: hugo --minify
 
-    - name: Configure AWS credentials using OIDC
+    - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        role-to-assume: arn:aws:iam::<YOUR_ACCOUNT_ID>:role/GitHubActionsRole # Replace with your IAM role ARN
+        aws-region: us-east-1  # replace with your region
 
-    - name: Deploy to S3
-      run: |
-        aws s3 sync ./public s3://${{ secrets.S3_BUCKET_NAME }} --delete --cache-control "public, max-age=3600"
-        
-    - name: Invalidate CloudFront (optional)
-      run: |
-        aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
-      if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
-
-    - name: Deployment summary
-      run: |
-        echo "✅ Hugo site deployed successfully!"
-        echo "🌐 S3 Bucket: ${{ secrets.S3_BUCKET_NAME }}"
-        echo "📦 Files synced from ./public directory"
+    - name: Sync to S3
+      run: aws s3 sync public/ s3://<YOUR_BUCKET_NAME> --delete # Replace with your S3 bucket name
+    - name: Invalidate CloudFront
+      run: aws cloudfront create-invalidation --distribution-id <YOUR_DISTRIBUTION_ID> --paths "/*" # Replace with your CloudFront distribution ID
